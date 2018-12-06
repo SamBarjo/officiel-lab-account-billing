@@ -19,7 +19,7 @@ public class AccountBillingService {
         List<Allocation> allocationsToRedistribute = billToCancel.getAllocations();
 
         for (Allocation allocationToRedistribute : allocationsToRedistribute) {
-            List<Bill> clientBills = BillDAO.getInstance().findAllByClient(clientId);
+            List<Bill> clientBills = findAllBillsByClient(clientId);
             int amountToRedistribute = allocationToRedistribute.getAmount();
 
             for (Bill billCandidate : clientBills) {
@@ -44,6 +44,10 @@ public class AccountBillingService {
                 }
             }
         }
+    }
+
+    protected List<Bill> findAllBillsByClient(ClientId clientId) {
+        return BillDAO.getInstance().findAllByClient(clientId);
     }
 
     protected void persistBill(Bill bill) {
