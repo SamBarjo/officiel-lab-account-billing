@@ -4,42 +4,46 @@ import java.util.List;
 
 public class AccountBillingService {
 
-	public void cancelInvoiceAndRedistributeFunds(BillId id) {
-		Bill bill = BillDAO.getInstance().findBill(id);
-		if (!(bill == null)) {
-			ClientId cid = bill.getClientId();
+    public void cancelInvoiceAndRedistributeFunds(BillId billId) {
+        Bill billToCancel = BillDAO.getInstance().findBill(billId);
+        if (billToCancel != null) {
+            ClientId clientId = billToCancel.getClientId();
 
-			if (bill.isCancelled() != true) bill.cancel();
-			BillDAO.getInstance().persist(bill);
+            if (!billToCancel.isCancelled()) {
+                billToCancel.cancel();
+            }
+            BillDAO.getInstance().persist(billToCancel);
 
-			List<Allocation> a = bill.getAllocations();
+            List<Allocation> allocationList = billToCancel.getAllocations();
 
-			for (Allocation al : a) {
-				List<Bill> bills = BillDAO.getInstance().findAllByClient(cid); int amount = al.getAmount();
+            for (Allocation currentAllocation : allocationList) {
+                List<Bill> clientBills = BillDAO.getInstance().findAllByClient(clientId);
+                int currentAmount = currentAllocation.getAmount();
 
-				for (Bill b : bills) {
-					if (bill != b) {
-						int remainingAmount = b.getRemainingAmount();
-						Allocation allocation;
-						if (remainingAmount <= amount) { allocation = new Allocation(remainingAmount);
-							amount -= remainingAmount;
-						} else {
-							allocation = new Allocation(amount);
-					amount = 0;
-						}
+                for (Bill bill : clientBills) {
+                    if (billToCancel != bill) {
+                        int remainingAmount = bill.getRemainingAmount();
+                        Allocation newAllocation;
+                        if (remainingAmount <= currentAmount) {
+                            newAllocation = new Allocation(remainingAmount);
+                            currentAmount -= remainingAmount;
+                        } else {
+                            newAllocation = new Allocation(currentAmount);
+                            currentAmount = 0;
+                        }
 
-						b.addAllocation(allocation);
-						
-						BillDAO.getInstance().persist(b);
-					}
+                        bill.addAllocation(newAllocation);
 
-					if (amount == 0) {
-						break;
-					}
-				}
-			}
-		} else {
-			throw new BillNotFoundException();
-		}
-	}
+                        BillDAO.getInstance().persist(bill);
+                    }
+
+                    if (currentAmount == 0) {
+                        break;
+                    }
+                }
+            }
+        } else {
+            throw new BillNotFoundException();
+        }
+    }
 }
