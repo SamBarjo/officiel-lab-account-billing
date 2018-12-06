@@ -5,7 +5,7 @@ import java.util.List;
 public class AccountBillingService {
 
     public void cancelInvoiceAndRedistributeFunds(BillId billId) {
-        Bill billToCancel = BillDAO.getInstance().findBill(billId);
+        Bill billToCancel = findBillById(billId);
         if (billToCancel == null) {
             throw new BillNotFoundException();
         }
@@ -14,7 +14,7 @@ public class AccountBillingService {
         if (!billToCancel.isCancelled()) {
             billToCancel.cancel();
         }
-        BillDAO.getInstance().persist(billToCancel);
+        persistBill(billToCancel);
 
         List<Allocation> allocationsToRedistribute = billToCancel.getAllocations();
 
@@ -36,7 +36,7 @@ public class AccountBillingService {
 
                     billCandidate.addAllocation(newAllocation);
 
-                    BillDAO.getInstance().persist(billCandidate);
+                    persistBill(billCandidate);
                 }
 
                 if (amountToRedistribute == 0) {
@@ -44,5 +44,13 @@ public class AccountBillingService {
                 }
             }
         }
+    }
+
+    protected void persistBill(Bill bill) {
+        BillDAO.getInstance().persist(bill);
+    }
+
+    protected Bill findBillById(BillId billId) {
+        return BillDAO.getInstance().findBill(billId);
     }
 }
