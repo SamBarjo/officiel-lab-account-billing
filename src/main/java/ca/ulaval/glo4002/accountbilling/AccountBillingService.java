@@ -6,44 +6,43 @@ public class AccountBillingService {
 
     public void cancelInvoiceAndRedistributeFunds(BillId billId) {
         Bill billToCancel = BillDAO.getInstance().findBill(billId);
-        if (billToCancel != null) {
-            ClientId clientId = billToCancel.getClientId();
+        if (billToCancel == null) {
+            throw new BillNotFoundException();
+        }
+        ClientId clientId = billToCancel.getClientId();
 
-            if (!billToCancel.isCancelled()) {
-                billToCancel.cancel();
-            }
-            BillDAO.getInstance().persist(billToCancel);
+        if (!billToCancel.isCancelled()) {
+            billToCancel.cancel();
+        }
+        BillDAO.getInstance().persist(billToCancel);
 
-            List<Allocation> allocationList = billToCancel.getAllocations();
+        List<Allocation> allocationsToRedistribute = billToCancel.getAllocations();
 
-            for (Allocation currentAllocation : allocationList) {
-                List<Bill> clientBills = BillDAO.getInstance().findAllByClient(clientId);
-                int currentAmount = currentAllocation.getAmount();
+        for (Allocation allocationToRedistribute : allocationsToRedistribute) {
+            List<Bill> clientBills = BillDAO.getInstance().findAllByClient(clientId);
+            int amountToRedistribute = allocationToRedistribute.getAmount();
 
-                for (Bill bill : clientBills) {
-                    if (billToCancel != bill) {
-                        int remainingAmount = bill.getRemainingAmount();
-                        Allocation newAllocation;
-                        if (remainingAmount <= currentAmount) {
-                            newAllocation = new Allocation(remainingAmount);
-                            currentAmount -= remainingAmount;
-                        } else {
-                            newAllocation = new Allocation(currentAmount);
-                            currentAmount = 0;
-                        }
-
-                        bill.addAllocation(newAllocation);
-
-                        BillDAO.getInstance().persist(bill);
+            for (Bill billCandidate : clientBills) {
+                if (billToCancel != billCandidate) {
+                    int remainingAmount = billCandidate.getRemainingAmount();
+                    Allocation newAllocation;
+                    if (remainingAmount <= amountToRedistribute) {
+                        newAllocation = new Allocation(remainingAmount);
+                        amountToRedistribute -= remainingAmount;
+                    } else {
+                        newAllocation = new Allocation(amountToRedistribute);
+                        amountToRedistribute = 0;
                     }
 
-                    if (currentAmount == 0) {
-                        break;
-                    }
+                    billCandidate.addAllocation(newAllocation);
+
+                    BillDAO.getInstance().persist(billCandidate);
+                }
+
+                if (amountToRedistribute == 0) {
+                    break;
                 }
             }
-        } else {
-            throw new BillNotFoundException();
         }
     }
 }
